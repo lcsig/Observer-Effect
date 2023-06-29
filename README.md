@@ -1,15 +1,18 @@
-# Observer-Effect
-Observer Effect in Abelian Probability Theory - Simple Simulation for The Experiment of The Reference Point Paradox 
+# The Observer Effect in Abelian Probability Theory
+Simple Simulation for The Experiment of The Reference Point Paradox 
 
 
 # Theory 
 Baclawski, Kenneth. "The observer effect." In 2018 IEEE Conference on Cognitive and Computational Aspects of Situation Management (CogSIMA), pp. 83-89. IEEE, 2018.
+
+<br/><br/>
+
 ![Paper Section](./theory.png)
 
 
 # Code Run
 
-### Unifrm Distribution:
+### Uniform Distribution:
 ```bash
 [-] Enter Circle Diameter (e.g. 50): 50
 [-] Enter The Num of Arcs (e.g. 500): 500
