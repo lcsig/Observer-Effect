@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>The Observer Effect -- Reference Point Paradox</title>
+<meta name="description" content="Interactive simulation of the Reference Point Paradox from Baclawski (2018). Cut a circle, drop a point, watch the observed arc length drift toward 2D/(N+1)." />
+<meta name="author" content="Mahmoud M. Almazari" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="The Observer Effect -- Reference Point Paradox" />
+<meta property="og:description" content="Live simulation: cut a circle at N random points, drop one observation, watch the observed arc length converge to 2D/(N+1), not D/N." />
+<meta property="og:url" content="https://lcsig.github.io/Observer-Effect/" />
+<meta property="og:image" content="https://lcsig.github.io/Observer-Effect/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="The Observer Effect" />
+<meta name="twitter:description" content="Live simulation of the Reference Point Paradox." />
+<meta name="twitter:image" content="https://lcsig.github.io/Observer-Effect/og.png" />
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="alternate icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='22' fill='none' stroke='%23f4b942' stroke-width='8'/><circle cx='32' cy='10' r='4' fill='%23e63946'/></svg>" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0b0c11;
+    --bg-soft: #12131a;
+    --canvas-bg: #07080d;
+    --ink: #eceef3;
+    --dim: #8b8c95;
+    --rule: #262833;
+    --amber: #f4b942;
+    --red: #e63946;
+    --halo: rgba(244,185,66,.06);
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f2e9;
+    --bg-soft: #efeadb;
+    --canvas-bg: #fbf7ec;
+    --ink: #1b1d22;
+    --dim: #6e6a5c;
+    --rule: #d8d2bf;
+    --amber: #b8860b;
+    --red: #c0392b;
+    --halo: rgba(184,134,11,.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(900px 600px at 50% -10%, var(--halo), transparent 60%),
+      var(--bg);
+    transition: background-color .25s, color .25s;
+  }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 56px 32px 64px;
+  }
+
+  header {
+    margin-bottom: 40px;
+  }
+  .head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .head-row .kicker { margin-bottom: 0; }
+  .theme {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    width: 36px; height: 36px;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    transition: border-color .15s, color .15s;
+    position: relative;
+  }
+  .theme:hover { border-color: var(--amber); color: var(--amber); }
+  .theme .tsun { display: none; }
+  :root[data-theme="light"] .theme .tmoon { display: none; }
+  :root[data-theme="light"] .theme .tsun { display: inline; }
+  .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(40px, 6vw, 72px);
+    line-height: 1;
+    letter-spacing: -.03em;
+  }
+  h1 em { font-style: italic; color: var(--amber); font-weight: 300; }
+  .lede {
+    margin-top: 18px;
+    max-width: 640px;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .lede em { color: var(--amber); font-style: italic; }
+
+  /* ------ stage ------ */
+  .stage {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .canvas-wrap {
+    aspect-ratio: 1 / 1;
+    border: 1px solid var(--rule);
+    background:
+      radial-gradient(circle at 50% 50%, var(--halo), transparent 65%),
+      var(--canvas-bg);
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--rule), 0 30px 60px -30px rgba(0,0,0,.5);
+  }
+  .canvas-wrap::before {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: .14;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  .canvas-wrap .label {
+    position: absolute;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: var(--dim);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .canvas-wrap .l-tl { top: 14px; left: 14px; }
+  .canvas-wrap .l-tr { top: 14px; right: 14px; }
+  .canvas-wrap .l-bl { bottom: 14px; left: 14px; }
+  .canvas-wrap .l-br { bottom: 14px; right: 14px; }
+  .canvas-wrap .l-tr b, .canvas-wrap .l-br b { color: var(--amber); font-weight: 500; }
+  canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  aside { display: flex; flex-direction: column; gap: 24px; }
+
+  /* ------ controls ------ */
+  .ctl label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--dim);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .ctl label b {
+    font-weight: 500;
+    color: var(--amber);
+    font-size: 13px;
+    letter-spacing: 0;
+  }
+  .ctl { margin-bottom: 16px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--rule);
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--amber);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 12px; height: 12px;
+    background: var(--amber);
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+  }
+
+  .seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid var(--rule);
+    margin-top: 4px;
+  }
+  .seg button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--dim);
+    border: 0;
+    padding: 9px;
+    cursor: pointer;
+  }
+  .seg button:first-child { border-right: 1px solid var(--rule); }
+  .seg button.active { background: var(--amber); color: var(--bg); }
+
+  .beta-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 12px;
+    opacity: .35;
+    transition: opacity .2s;
+    pointer-events: none;
+  }
+  .beta-box.on { opacity: 1; pointer-events: auto; }
+  .beta-box .ctl { margin: 0; }
+  input[type=range]:disabled { cursor: not-allowed; opacity: .7; }
+  input[type=range]:disabled::-webkit-slider-thumb { background: var(--dim); box-shadow: none; }
+  input[type=range]:disabled::-moz-range-thumb { background: var(--dim); }
+
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .btn-row button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    padding: 10px 6px;
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  .btn-row button:hover { border-color: var(--amber); color: var(--amber); }
+  .btn-row .primary {
+    background: var(--amber);
+    color: var(--bg);
+    border-color: var(--amber);
+    font-weight: 500;
+  }
+  .btn-row .primary:hover { color: var(--bg); }
+
+  /* ------ stats ------ */
+  .stats {
+    border-top: 1px solid var(--rule);
+    padding-top: 20px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .row .hd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .row .hd .sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+  .row .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .r-actual .sw { background: #6ee7ff; }
+  .r-real   .sw { background: #b08cff; }
+  .r-sim    .sw { background: var(--amber); }
+  .r-theory .sw { background: var(--red); }
+
+  .drops {
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .15em;
+    color: var(--dim);
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+  }
+  .drops b { color: var(--amber); font-weight: 500; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--dim);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  footer a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  footer a:hover { color: var(--amber); border-color: var(--amber); }
+
+  .donate {
+    margin-top: 28px;
+    padding: 18px 20px;
+    border: 1px dashed var(--rule);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .donate img {
+    width: 132px; height: 132px;
+    border: 1px solid var(--rule);
+    background: #fff;
+    padding: 6px;
+    flex-shrink: 0;
+    image-rendering: crisp-edges;
+  }
+  .donate .d-txt { flex: 1; min-width: 0; }
+  .donate .d-hd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 6px;
+  }
+  .donate .d-addr {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    word-break: break-all;
+    cursor: pointer;
+    user-select: all;
+    border-bottom: 1px dotted var(--rule);
+    padding-bottom: 2px;
+  }
+  .donate .d-addr:hover { color: var(--amber); border-color: var(--amber); }
+  .donate .d-note {
+    margin-top: 4px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  /* Convergence chart */
+  .chart-wrap {
+    margin-top: 18px;
+    border: 1px solid var(--rule);
+    background: var(--canvas-bg);
+    position: relative;
+    height: 110px;
+    overflow: hidden;
+  }
+  .chart-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .chart-wrap .c-hd {
+    position: absolute;
+    top: 10px; left: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .25em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .chart-wrap .c-hd b { color: var(--amber); font-weight: 500; }
+  .chart-wrap .c-legend {
+    position: absolute;
+    top: 10px; right: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--dim);
+    display: flex; gap: 14px;
+  }
+  .chart-wrap .c-legend i {
+    display: inline-block;
+    width: 10px; height: 2px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  .kbd-hint {
+    margin-top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--dim);
+    text-align: center;
+  }
+  .kbd-hint kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    background: var(--bg-soft);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    margin: 0 2px;
+  }
+
+  @media (max-width: 820px) {
+    .stage { grid-template-columns: 1fr; }
+    .wrap { padding: 36px 20px 48px; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 28px 16px 40px; }
+    h1 { font-size: clamp(36px, 10vw, 54px); }
+    .lede { font-size: 14px; }
+    .donate { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .donate img { width: 108px; height: 108px; }
+    .donate .d-addr { font-size: 11px; }
+    footer { flex-direction: column; align-items: flex-start; }
+    .btn-row { grid-template-columns: 1fr 1fr; }
+    .btn-row #btn-recut { grid-column: 1 / -1; }
+    .chart-wrap { height: 90px; }
+    .kbd-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="head-row">
+        <div class="kicker">Reference Point Paradox -- live</div>
+        <button id="theme" class="theme" title="Toggle theme">
+          <span class="tmoon">[D]</span><span class="tsun">[L]</span>
+        </button>
+      </div>
+      <h1>The Observer <em>Effect</em></h1>
+      <p class="lede">
+        Cut a circle of circumference <em>D</em> at <em>N</em> random points, then drop one observation. The arc it lands in tends to be <em>longer</em> than <em>D/N</em> -- the expected length is <em>2D/(N+1)</em>. The act of observing biases the measurement.
+      </p>
+    </header>
+
+    <section class="stage">
+      <div class="canvas-wrap">
+        <canvas id="cv"></canvas>
+        <div class="label l-tl">OBS - 01</div>
+        <div class="label l-tr">theta in <b>[0, 2pi)</b></div>
+        <div class="label l-bl" id="lab-dist">Uniform field</div>
+        <div class="label l-br"><b>*</b> observed</div>
+      </div>
+
+      <aside>
+        <div>
+          <div class="ctl">
+            <label>Arcs <em style="font-style:italic">N</em><b id="lbl-n">80</b></label>
+            <input type="range" id="r-n" min="2" max="500" step="1" value="80" />
+          </div>
+          <div class="ctl">
+            <label>Points / sec<b id="lbl-rate">10</b></label>
+            <input type="range" id="r-rate" min="10" max="3000" step="10" value="10" />
+          </div>
+          <div class="ctl">
+            <label>Distribution of cuts</label>
+            <div class="seg">
+              <button id="d-uni" class="active">Uniform</button>
+              <button id="d-beta">Beta</button>
+            </div>
+            <div class="beta-box" id="beta-box">
+              <div class="ctl">
+                <label>alpha<b id="lbl-a">4.0</b></label>
+                <input type="range" id="r-a" min="0.2" max="10" step="0.1" value="4" disabled />
+              </div>
+              <div class="ctl">
+                <label>beta<b id="lbl-b">4.0</b></label>
+                <input type="range" id="r-b" min="0.2" max="10" step="0.1" value="4" disabled />
+              </div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button id="btn-play" class="primary">Pause</button>
+            <button id="btn-reset">Reset</button>
+            <button id="btn-recut">Re-cut</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="row r-actual">
+            <div class="hd"><span class="sw"></span>D / N - naive</div>
+            <div class="val" id="v-actual">--</div>
+          </div>
+          <div class="row r-sim">
+            <div class="hd"><span class="sw"></span>Simulated mean</div>
+            <div class="val" id="v-sim">--</div>
+          </div>
+          <div class="row r-real">
+            <div class="hd"><span class="sw"></span>E[l | these cuts]</div>
+            <div class="val" id="v-real">--</div>
+          </div>
+          <div class="row r-theory">
+            <div class="hd"><span class="sw"></span>2D / (N+1) - avg</div>
+            <div class="val" id="v-theory">--</div>
+          </div>
+          <div class="drops">
+            <span>Drops <b id="c-drops">0</b></span>
+            <span>Arcs <b id="c-arcs">0</b></span>
+          </div>
+        </div>
+        <div class="kbd-hint">
+          <kbd>Space</kbd> play/pause
+          <kbd>R</kbd> re-cut
+          <kbd>0</kbd> reset
+          <kbd>T</kbd> theme
+        </div>
+      </aside>
+    </section>
+
+    <div class="chart-wrap">
+      <canvas id="ch"></canvas>
+      <div class="c-hd">Convergence - <b id="c-count">0</b> drops</div>
+      <div class="c-legend">
+        <span><i style="background:var(--amber)"></i>Simulated</span>
+        <span><i style="background:#b08cff"></i>Realization</span>
+        <span><i style="background:var(--red);border-top:1px dashed var(--red);background:transparent"></i>Theoretical</span>
+      </div>
+    </div>
+
+    <div class="donate">
+      <img src="https://raw.githubusercontent.com/lcsig/API-Hooking/refs/heads/master/img/btc.png" alt="BTC" />
+      <div class="d-txt">
+        <div class="d-hd">Buy me a coffee - BTC</div>
+        <div class="d-addr" id="btc" title="Click to copy">bc1q2kqvggm552h0csyr0awa2zepdapxdqnacw0z5w</div>
+        <div class="d-note" id="btc-note">click the address to copy</div>
+      </div>
+    </div>
+
+    <footer>
+      <div>Baclawski, K. (2018) - <em style="font-family:Fraunces;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">The Observer Effect</em>, IEEE CogSIMA</div>
+      <a href="https://github.com/lcsig/Observer-Effect" id="src">Source</a>
+    </footer>
+
+  </div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const TAU = Math.PI * 2;
+  const D = 50; // diameter fixed -- simpler UI
+
+  // Beta via Gamma (Marsaglia-Tsang)
+  function nrand() { let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v); }
+  function grand(k) {
+    if (k < 1) return grand(k+1) * Math.pow(Math.random(), 1/k);
+    const d = k - 1/3, c = 1/Math.sqrt(9*d);
+    while (true) {
+      let x, v; do { x = nrand(); v = 1 + c*x; } while (v <= 0);
+      v = v*v*v;
+      const u = Math.random();
+      if (u < 1 - 0.0331*x*x*x*x) return d*v;
+      if (Math.log(u) < 0.5*x*x + d*(1 - v + Math.log(v))) return d*v;
+    }
+  }
+  function brand(a, b) { const x = grand(a), y = grand(b); return x/(x+y); }
+
+  const state = {
+    N: 80, rate: 10, dist: 'uniform', a: 4, b: 4,
+    cuts: [], lens: [], realExp: 0,
+    drops: 0, totalLen: 0,
+    running: true, lastT: 0, accum: 0, tAbs: 0,
+    flash: new Map(), points: [], sparks: [],
+    theme: 'dark',
+    history: [],  // {n, mean}
+    historyCap: 240,
+    nextSnap: 1,
+  };
+
+  function generateCuts() {
+    const { N, dist, a, b } = state;
+    let L;
+    if (dist === 'beta') {
+      const m = N + 2;
+      L = new Array(m);
+      for (let i = 0; i < m; i++) L[i] = brand(a, b);
+      const mn = Math.min(...L), mx = Math.max(...L);
+      L = L.map(v => (v - mn) * D / (mx - mn));
+      L.sort((x,y) => x - y);
+      L.shift(); L.pop();
+    } else {
+      L = new Array(N);
+      for (let i = 0; i < N; i++) L[i] = Math.random() * D;
+      L.sort((x,y) => x - y);
+    }
+    L.push(D);
+    state.cuts = L;
+    const lens = new Array(L.length);
+    let sumSq = 0;
+    for (let i = 0; i < L.length; i++) {
+      lens[i] = L[i] - (i === 0 ? 0 : L[i-1]);
+      sumSq += lens[i] * lens[i];
+    }
+    state.lens = lens;
+    state.realExp = sumSq / D;  // size-biased mean for these specific cuts
+    state.drops = 0; state.totalLen = 0;
+    state.flash.clear(); state.points.length = 0;
+    state.history.length = 0;
+    state.nextSnap = 1;
+    $('c-arcs').textContent = lens.length;
+    updateStats();
+  }
+
+  function arcIndex(p) {
+    const cuts = state.cuts;
+    let lo = 0, hi = cuts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (p < cuts[mid]) hi = mid; else lo = mid + 1;
+    }
+    return lo;
+  }
+
+  function dropOne() {
+    let p = Math.random() * D;
+    const idx = arcIndex(p);
+    state.totalLen += state.lens[idx];
+    state.drops += 1;
+    state.flash.set(idx, 600);
+    const theta = (p / D) * TAU - Math.PI / 2;
+    state.points.push({ theta, life: 1400, born: state.tAbs });
+    if (state.points.length > 160) state.points.shift();
+    // occasional sparks for flair when rate low
+    if (state.rate < 200 || Math.random() < 0.04) {
+      for (let k = 0; k < 4; k++) {
+        state.sparks.push({
+          theta, life: 700,
+          vr: 18 + Math.random()*22,
+          dt: (Math.random() - 0.5) * 0.25
+        });
+      }
+    }
+    if (state.sparks.length > 240) state.sparks.splice(0, state.sparks.length - 240);
+  }
+
+  function updateStats() {
+    const { N, drops, totalLen, realExp } = state;
+    const actual = D / N;
+    const sim = drops ? totalLen / drops : 0;
+    const theory = 2 * D / (N + 1);
+    const f = x => x.toFixed(3);
+    $('v-actual').textContent = f(actual);
+    $('v-sim').textContent = drops ? f(sim) : '--';
+    $('v-real').textContent = realExp ? f(realExp) : '--';
+    $('v-theory').textContent = f(theory);
+    $('c-drops').textContent = drops.toLocaleString();
+    $('c-count').textContent = drops.toLocaleString();
+
+    // snapshot for convergence chart -- log-spaced to keep curve readable
+    if (drops >= state.nextSnap) {
+      state.history.push({ n: drops, mean: sim });
+      if (state.history.length > state.historyCap) state.history.shift();
+      state.nextSnap = Math.max(state.nextSnap + 1, Math.floor(state.nextSnap * 1.08));
+    }
+  }
+
+  // canvases
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  const ch = $('ch'), chx = ch.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  let chW = 0, chH = 0;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * DPR);
+    cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    const r2 = ch.getBoundingClientRect();
+    chW = r2.width; chH = r2.height;
+    ch.width = Math.round(chW * DPR);
+    ch.height = Math.round(chH * DPR);
+    chx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  new ResizeObserver(resize).observe(cv);
+  new ResizeObserver(resize).observe(ch);
+
+  function themeColors() {
+    const light = state.theme === 'light';
+    return {
+      faint:  light ? 'rgba(27,29,34,0.10)' : 'rgba(236,238,243,0.08)',
+      hair:   light ? 'rgba(27,29,34,0.18)' : 'rgba(236,238,243,0.14)',
+      tick:   light ? 'rgba(184,134,11,0.35)' : 'rgba(244,185,66,0.28)',
+      cut:    light ? 'rgba(245,242,233,0.95)' : 'rgba(7,8,13,0.95)',
+      text:   light ? '#1b1d22' : '#eceef3',
+      dim:    light ? '#6e6a5c' : '#8b8c95',
+      amber:  light ? '#b8860b' : '#f4b942',
+      red:    light ? '#c0392b' : '#e63946',
+      arcSat: light ? 55 : 60,
+      arcLig: light ? 50 : 58,
+      pointCore: light ? 'rgba(184,134,11' : 'rgba(255,230,150',
+      pointGlow: light ? 'rgba(192,57,43' : 'rgba(230,57,70',
+    };
+  }
+
+  function render(dt) {
+    state.tAbs += dt;
+    ctx.clearRect(0, 0, W, H);
+    const cx = W/2, cy = H/2;
+    const R = Math.min(W, H) * 0.34;
+    const thick = Math.max(14, R * 0.11);
+    const C = themeColors();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // ---- background halo ----
+    const halo = ctx.createRadialGradient(0, 0, R*0.2, 0, 0, R*1.6);
+    halo.addColorStop(0, state.theme === 'light' ? 'rgba(184,134,11,0.09)' : 'rgba(244,185,66,0.10)');
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, R*1.6, 0, TAU); ctx.fill();
+
+    // ---- outer faint rings ----
+    ctx.strokeStyle = C.faint;
+    ctx.lineWidth = 1;
+    [R + thick/2 + 22, R + thick/2 + 46, R + thick/2 + 78].forEach(r => {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+    });
+
+    // ---- rotating major tick ring ----
+    const spin = (state.tAbs / 24000) * TAU;
+    ctx.strokeStyle = C.tick;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 120; i++) {
+      const a = spin + (i / 120) * TAU;
+      const major = i % 12 === 0;
+      const r1 = R + thick/2 + 28;
+      const r2 = r1 + (major ? 12 : (i % 3 === 0 ? 6 : 3));
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*r1, Math.sin(a)*r1);
+      ctx.lineTo(Math.cos(a)*r2, Math.sin(a)*r2);
+      ctx.stroke();
+    }
+
+    // ---- tick numerals (theta in pi units) ----
+    ctx.fillStyle = C.dim;
+    ctx.font = '500 9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const thetaLabels = ['0', 'pi/2', 'pi', '3pi/2'];
+    thetaLabels.forEach((t, i) => {
+      const a = -Math.PI/2 + (i / 4) * TAU;
+      const lr = R + thick/2 + 64;
+      ctx.fillText(t, Math.cos(a)*lr, Math.sin(a)*lr);
+    });
+
+    // ---- crosshair ----
+    ctx.strokeStyle = C.faint;
+    ctx.setLineDash([2, 6]);
+    ctx.beginPath();
+    ctx.moveTo(-R*1.25, 0); ctx.lineTo(R*1.25, 0);
+    ctx.moveTo(0, -R*1.25); ctx.lineTo(0, R*1.25);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ---- arcs ----
+    const { cuts, lens, flash } = state;
+    let prev = 0;
+    for (let i = 0; i < cuts.length; i++) {
+      const a0 = (prev / D) * TAU - Math.PI/2;
+      const a1 = (cuts[i] / D) * TAU - Math.PI/2;
+      prev = cuts[i];
+      const fRaw = flash.get(i) || 0;
+      const f = fRaw / 600;
+      const hue = (i * 137.5) % 360;
+      const warm = (hue < 60 || hue > 300) ? hue : (30 + (i%5)*12);
+      ctx.beginPath();
+      ctx.arc(0, 0, R, a0, a1);
+      ctx.lineWidth = thick;
+      ctx.strokeStyle = `hsl(${warm} ${C.arcSat}% ${C.arcLig + f*15}%)`;
+      ctx.globalAlpha = 0.6 + 0.4 * f;
+      ctx.stroke();
+      if (f > 0) {
+        ctx.beginPath();
+        ctx.arc(0, 0, R, a0, a1);
+        ctx.lineWidth = thick + 18 * f;
+        ctx.globalAlpha = 0.28 * f;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      if (fRaw > 0) {
+        const nm = fRaw - dt;
+        if (nm <= 0) flash.delete(i); else flash.set(i, nm);
+      }
+    }
+
+    // ---- inner ring (darker lip inside the annulus) ----
+    ctx.strokeStyle = C.hair;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, R - thick/2 - 1, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R + thick/2 + 1, 0, TAU); ctx.stroke();
+
+    // ---- cut hairlines ----
+    ctx.strokeStyle = C.cut;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const a = (cuts[i] / D) * TAU - Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*(R - thick/2), Math.sin(a)*(R - thick/2));
+      ctx.lineTo(Math.cos(a)*(R + thick/2), Math.sin(a)*(R + thick/2));
+      ctx.stroke();
+    }
+
+    // ---- progress meter (drops, saturating) ----
+    const frac = 1 - Math.exp(-state.drops / 6000);
+    ctx.beginPath();
+    ctx.arc(0, 0, R + thick/2 + 14, -Math.PI/2, -Math.PI/2 + TAU*frac);
+    ctx.strokeStyle = C.red;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // meter endcap pulse
+    if (frac > 0.001) {
+      const ea = -Math.PI/2 + TAU*frac;
+      const ex = Math.cos(ea)*(R + thick/2 + 14);
+      const ey = Math.sin(ea)*(R + thick/2 + 14);
+      const pulse = 0.5 + 0.5 * Math.sin(state.tAbs / 220);
+      ctx.beginPath(); ctx.arc(ex, ey, 3 + pulse*2, 0, TAU);
+      ctx.fillStyle = C.red; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex, ey, 10 + pulse*6, 0, TAU);
+      ctx.fillStyle = `${C.pointGlow},${0.12 + pulse*0.08})`;
+      ctx.fill();
+    }
+
+    // ---- center medallion ----
+    const medR = R - thick/2 - 22;
+    const medGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, medR);
+    medGrad.addColorStop(0, state.theme === 'light' ? 'rgba(184,134,11,0.10)' : 'rgba(244,185,66,0.08)');
+    medGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = medGrad;
+    ctx.beginPath(); ctx.arc(0, 0, medR, 0, TAU); ctx.fill();
+    ctx.strokeStyle = C.hair;
+    ctx.beginPath(); ctx.arc(0, 0, medR, 0, TAU); ctx.stroke();
+
+    // inner hash marks
+    ctx.strokeStyle = C.faint;
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * TAU;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*(medR - 4), Math.sin(a)*(medR - 4));
+      ctx.lineTo(Math.cos(a)*(medR - (i % 3 === 0 ? 10 : 7)), Math.sin(a)*(medR - (i % 3 === 0 ? 10 : 7)));
+      ctx.stroke();
+    }
+
+    // ---- center readout ----
+    const sim = state.drops ? state.totalLen / state.drops : 0;
+    const theory = 2 * D / (state.N + 1);
+    const ratio = sim && theory ? sim / theory : 0;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = C.dim;
+    ctx.font = '500 9px "JetBrains Mono", monospace';
+    ctx.fillText('MEAN ARC l', 0, -34);
+
+    ctx.fillStyle = C.text;
+    ctx.font = '500 38px "JetBrains Mono", monospace';
+    ctx.fillText(sim ? sim.toFixed(2) : '-----', 0, -2);
+
+    // divider
+    ctx.strokeStyle = C.faint;
+    ctx.beginPath(); ctx.moveTo(-38, 18); ctx.lineTo(38, 18); ctx.stroke();
+
+    ctx.fillStyle = C.amber;
+    ctx.font = '400 italic 13px Fraunces, serif';
+    ctx.fillText('n = ' + state.drops.toLocaleString(), 0, 34);
+
+    ctx.fillStyle = C.dim;
+    ctx.font = '400 10px "JetBrains Mono", monospace';
+    ctx.fillText(ratio ? 'l / (2D/(N+1)) = ' + ratio.toFixed(3) : 'awaiting drops', 0, 54);
+
+    // ---- sparks ----
+    const sparks = state.sparks;
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.life -= dt;
+      if (s.life <= 0) { sparks.splice(i, 1); continue; }
+      const t = s.life / 700;
+      const r = R + (1 - t) * s.vr;
+      const a = s.theta + s.dt * (1 - t);
+      ctx.beginPath();
+      ctx.arc(Math.cos(a)*r, Math.sin(a)*r, 1.5, 0, TAU);
+      ctx.fillStyle = `${C.pointCore},${0.8*t})`;
+      ctx.fill();
+    }
+
+    // ---- dropped points w/ radial trail ----
+    const pts = state.points;
+    for (let i = pts.length - 1; i >= 0; i--) {
+      const p = pts[i];
+      p.life -= dt;
+      if (p.life <= 0) { pts.splice(i, 1); continue; }
+      const t = p.life / 1400;
+      const px = Math.cos(p.theta) * R;
+      const py = Math.sin(p.theta) * R;
+      // whisker line from center
+      const grad = ctx.createLinearGradient(0, 0, px, py);
+      grad.addColorStop(0, `${C.pointGlow},0)`);
+      grad.addColorStop(1, `${C.pointGlow},${0.28*t})`);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(px, py); ctx.stroke();
+      // core dot
+      ctx.beginPath();
+      ctx.arc(px, py, 2 + 2*t, 0, TAU);
+      ctx.fillStyle = `${C.pointCore},${0.55 + 0.45*t})`;
+      ctx.fill();
+      // outer halo
+      ctx.beginPath();
+      ctx.arc(px, py, 10*t, 0, TAU);
+      ctx.fillStyle = `${C.pointGlow},${0.16*t})`;
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function renderChart() {
+    const w = chW, h = chH;
+    chx.clearRect(0, 0, w, h);
+    const C = themeColors();
+    const hist = state.history;
+    const padL = 44, padR = 14, padT = 32, padB = 14;
+    const iw = w - padL - padR;
+    const ih = h - padT - padB;
+
+    // axes / frame
+    chx.strokeStyle = C.faint;
+    chx.lineWidth = 1;
+    chx.beginPath();
+    chx.moveTo(padL, padT); chx.lineTo(padL, h - padB); chx.lineTo(w - padR, h - padB);
+    chx.stroke();
+
+    // value range -- lock to span covering naive, real, theory +/- margin
+    const N = state.N;
+    const naive = D / N;
+    const theory = 2 * D / (N + 1);
+    const real = state.realExp || theory;
+    let vMin = Math.min(naive, theory, real);
+    let vMax = Math.max(naive, theory, real);
+    // expand by 20% each side
+    const span = Math.max(vMax - vMin, theory * 0.5) || 1;
+    vMin -= span * 0.25; vMax += span * 0.25;
+    const yOf = v => padT + (1 - (v - vMin) / (vMax - vMin)) * ih;
+
+    // y-axis labels
+    chx.fillStyle = C.dim;
+    chx.font = '500 9px "JetBrains Mono", monospace';
+    chx.textAlign = 'right';
+    chx.textBaseline = 'middle';
+    [vMin + span*0.05, (vMin + vMax)/2, vMax - span*0.05].forEach(v => {
+      chx.fillText(v.toFixed(2), padL - 6, yOf(v));
+    });
+
+    // reference lines: theoretical (red dashed), realization (violet dotted), naive (cyan faint)
+    const drawHLine = (v, color, dash) => {
+      chx.strokeStyle = color;
+      chx.setLineDash(dash);
+      chx.beginPath();
+      chx.moveTo(padL, yOf(v));
+      chx.lineTo(w - padR, yOf(v));
+      chx.stroke();
+      chx.setLineDash([]);
+    };
+    drawHLine(naive, C.faint, [2, 4]);
+    drawHLine(real, 'rgba(176,140,255,0.55)', [1, 3]);
+    drawHLine(theory, state.theme === 'light' ? 'rgba(192,57,43,0.7)' : 'rgba(230,57,70,0.7)', [4, 4]);
+
+    // running mean curve
+    if (hist.length > 1) {
+      const nMax = hist[hist.length - 1].n;
+      const nMin = hist[0].n;
+      // log-x
+      const lxMin = Math.log10(Math.max(1, nMin));
+      const lxMax = Math.log10(Math.max(nMin + 1, nMax));
+      const xOf = n => padL + ((Math.log10(Math.max(1, n)) - lxMin) / Math.max(1e-9, (lxMax - lxMin))) * iw;
+
+      // area fill
+      chx.beginPath();
+      chx.moveTo(xOf(hist[0].n), yOf(hist[0].mean));
+      for (let i = 1; i < hist.length; i++) chx.lineTo(xOf(hist[i].n), yOf(hist[i].mean));
+      chx.lineTo(xOf(hist[hist.length-1].n), h - padB);
+      chx.lineTo(xOf(hist[0].n), h - padB);
+      chx.closePath();
+      chx.fillStyle = state.theme === 'light' ? 'rgba(184,134,11,0.08)' : 'rgba(244,185,66,0.10)';
+      chx.fill();
+
+      // line
+      chx.beginPath();
+      chx.moveTo(xOf(hist[0].n), yOf(hist[0].mean));
+      for (let i = 1; i < hist.length; i++) chx.lineTo(xOf(hist[i].n), yOf(hist[i].mean));
+      chx.strokeStyle = C.amber;
+      chx.lineWidth = 1.75;
+      chx.stroke();
+
+      // tip marker
+      const last = hist[hist.length - 1];
+      chx.beginPath();
+      chx.arc(xOf(last.n), yOf(last.mean), 3, 0, TAU);
+      chx.fillStyle = C.amber;
+      chx.fill();
+    } else {
+      chx.fillStyle = C.dim;
+      chx.font = '400 italic 11px Fraunces, serif';
+      chx.textAlign = 'center';
+      chx.fillText('awaiting drops...', w/2, h/2);
+    }
+  }
+
+  function frame(t) {
+    const dt = Math.min(50, t - (state.lastT || t));
+    state.lastT = t;
+    if (state.running) {
+      state.accum += dt * (state.rate / 1000);
+      let k = Math.floor(state.accum);
+      if (k > 0) {
+        state.accum -= k;
+        k = Math.min(k, 400);
+        for (let i = 0; i < k; i++) dropOne();
+        updateStats();
+      }
+    }
+    render(dt);
+    renderChart();
+    requestAnimationFrame(frame);
+  }
+
+  function wire() {
+    $('r-n').addEventListener('input', e => { state.N = +e.target.value; $('lbl-n').textContent = state.N; generateCuts(); });
+    $('r-rate').addEventListener('input', e => { state.rate = +e.target.value; $('lbl-rate').textContent = state.rate; });
+    const syncDistLabel = () => {
+      const lab = $('lab-dist');
+      if (!lab) return;
+      lab.textContent = (state.dist === 'beta' ? 'Beta field - alpha=' + state.a.toFixed(1) + ' beta=' + state.b.toFixed(1) : 'Uniform field');
+    };
+    $('r-a').addEventListener('input', e => { state.a = +e.target.value; $('lbl-a').textContent = state.a.toFixed(1); syncDistLabel(); if (state.dist==='beta') generateCuts(); });
+    $('r-b').addEventListener('input', e => { state.b = +e.target.value; $('lbl-b').textContent = state.b.toFixed(1); syncDistLabel(); if (state.dist==='beta') generateCuts(); });
+
+    const setDist = d => {
+      state.dist = d;
+      $('d-uni').classList.toggle('active', d === 'uniform');
+      $('d-beta').classList.toggle('active', d === 'beta');
+      $('beta-box').classList.toggle('on', d === 'beta');
+      $('r-a').disabled = d !== 'beta';
+      $('r-b').disabled = d !== 'beta';
+      const lab = $('lab-dist');
+      if (lab) lab.textContent = (d === 'beta' ? 'Beta field - alpha=' + state.a.toFixed(1) + ' beta=' + state.b.toFixed(1) : 'Uniform field');
+      generateCuts();
+    };
+    $('d-uni').addEventListener('click', () => setDist('uniform'));
+    $('d-beta').addEventListener('click', () => setDist('beta'));
+
+    // theme toggle
+    const themeBtn = $('theme');
+    const applyTheme = t => {
+      state.theme = t;
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem('obs-theme', t); } catch {}
+    };
+    const stored = (() => { try { return localStorage.getItem('obs-theme'); } catch { return null; } })();
+    applyTheme(stored === 'light' ? 'light' : 'dark');
+    themeBtn?.addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark'));
+
+    $('btn-play').addEventListener('click', () => {
+      state.running = !state.running;
+      $('btn-play').textContent = state.running ? 'Pause' : 'Play';
+    });
+    $('btn-reset').addEventListener('click', () => {
+      state.drops = 0; state.totalLen = 0;
+      state.points.length = 0; state.flash.clear();
+      state.history.length = 0; state.nextSnap = 1;
+      updateStats();
+    });
+    $('btn-recut').addEventListener('click', generateCuts);
+
+    // keyboard shortcuts
+    document.addEventListener('keydown', e => {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key) {
+        case ' ':
+        case 'Spacebar':
+          e.preventDefault();
+          $('btn-play').click();
+          break;
+        case 'r': case 'R': $('btn-recut').click(); break;
+        case '0': $('btn-reset').click(); break;
+        case 't': case 'T': themeBtn?.click(); break;
+      }
+    });
+  }
+
+  resize();
+  wire();
+  generateCuts();
+  requestAnimationFrame(frame);
+
+  const btc = $('btc'), btcNote = $('btc-note');
+  btc?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(btc.textContent.trim());
+      btcNote.textContent = 'copied ok';
+      setTimeout(() => { btcNote.textContent = 'click the address to copy'; }, 1600);
+    } catch {
+      btcNote.textContent = 'copy failed -- select manually';
+    }
+  });
+})();
+</script>
+</body>
+</html>
